@@ -1,346 +1,194 @@
-<p align="center">
-  <img src="docs/banner.svg" alt="dsh-purge-safe" width="720">
-</p>
+# dsh-purge-unsafe
 
-<h1 align="center">⚔️ DeepSeek Harness cybersecurity red-team tool (dsh-purge-safe)</h1>
+[![repo](https://img.shields.io/badge/GitHub-HuaLuonb/dsh-purge-unsafe-181717?logo=github)](https://github.com/HuaLuonb/dsh-purge-unsafe)
+[![version](https://img.shields.io/badge/version-0.1.0-2563eb)](https://github.com/HuaLuonb/dsh-purge-unsafe/releases)
+[![license](https://img.shields.io/badge/license-Apache--2.0-3a7d44)](LICENSE)
+[![dsh](https://img.shields.io/badge/DSH-0.2.0--rc.1%20~%200.2.2--rc.5-8b5cf6)](#兼容)
 
-<p align="center"><strong>Version 2.0.0</strong></p>
+- 仓库：<https://github.com/HuaLuonb/dsh-purge-unsafe>
+- 上游：<https://github.com/CallMeGuLab/dsh-purge-safe>（fork 基点 `cc881fb`，4 个提交与 `NOTICE` 全保留）
+- 提问题：<https://github.com/HuaLuonb/dsh-purge-unsafe/issues>
+- 对比上游改动：<https://github.com/HuaLuonb/dsh-purge-unsafe/compare/cc881fb...main>
 
-<p align="center">
-  <em>Full-featured edition + Super Agent support · DSH 0.2.2-rc.3 · Optimized prompts, fewer refusals, improved stability.</em>
-</p>
+装完即生效，不需要激活词，也没有「打开注入」的开关；提示词规则常驻，面板只管内容。
 
-<p align="center">
-  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat" alt="Apache-2.0"></a>
-  <a href="https://www.deepseek.com/harness/"><img src="https://img.shields.io/badge/dsh-0.2.2--rc.3-blue" alt="DSH"></a>
-  <br>
-  <img src="https://img.shields.io/badge/Node.js-%3E%3D18-339933?logo=node.js&logoColor=fff" alt="Node.js">
-  <img src="https://img.shields.io/badge/JavaScript-F7DF1E?logo=javascript&logoColor=000" alt="JavaScript">
-</p>
+## 与上游的差异
 
+| 差异点 | 上游 dsh-purge-safe | 本 fork dsh-purge-unsafe |
+|---|---|---|
+| 激活词 | 先发一句触发词，命中后才注册提示词段 | 无激活词，`apply()` 执行即注册，宿主一启动段就在 |
+| 提示词生效方式 | 面板上的「注入 / 关闭注入」按钮控制 | 注入常驻，没有开关；面板只改规则内容，保存即生效 |
+| 资产导入 | 一条一条添加 | 批量粘贴导入：换行 / 逗号 / 分号 / 空格分隔，`#` 注释，自动去重并归类 `host` / `host:port` / `ip` / `cidr` |
+| 面板形态 | 侧栏 dock 多页签工作台（Clean / Drill） | 侧边栏 `PU` 图标 + 原生 React 面板：概览 / 资产 / 规则 / 模型 / 诊断，配色走宿主 `--dsw-alias-*` 变量 |
+| 版本适配 | 只对 `0.2.2-rc.3` 打补丁 | `lib/unsafe/compat.js` 兼容层覆盖 `0.2.0-rc.1` → `0.2.2-rc.5`，缺能力就降级，不抛异常 |
 
-<p align="center">
-  <a href="README.md">English</a> | <a href="README.zh-CN.md">中文</a> | <a href="README.ja.md">日本語</a>
-</p>
+## 安装
 
-## Community and support
+三种方式选一种。装完都要**完整退出宿主再重开**，`apply()` 只在启动时跑一次。
 
-Join our Telegram community to learn, exchange ideas, get technical support, and share the project.
+### 1. `npm pack` 后 `dsh plugin add`
 
-- **Channel**: [LLM_PoJia](https://t.me/LLM_PoJia)
-- **Group**: [xiaomajiang9919](https://t.me/xiaomajiang9919)
-
-## Contents
-
-- [Latest updates](#latest-updates)
-- [What this is](#what-this-is)
-- [Attribution required](#attribution-required)
-- [License](#license)
-- [Supported hosts](#supported-hosts)
-- [Install](#install)
-- [Usage](#usage)
-- [How it works](#how-it-works)
-- [Restore](#restore)
-- [Releases](#releases)
-
----
-
-## Latest updates
-
-**Full-featured edition + Super Agent support**
-
-- Adapted for **DeepSeek Harness 0.2.2-rc.3**.
-- Added **Super Agent** support.
-- Optimized prompts.
-- Reduced refusal rate and improved stability.
-
-## What this is
-
-**dsh-purge-safe** is a cybersecurity red-team plugin for the official [DeepSeek Harness](https://www.deepseek.com/harness/) already installed on your machine. This full-featured edition targets **DSH 0.2.2-rc.3** and adds **Super Agent** support. Official **Web** (`dsh web`) and the official **desktop EXE** are both supported. Install and Apply them separately.
-
-Harness does more than forward a prompt. It rewrites prompts, approval gates, sandbox policy, and session migration at runtime. Asking only “will the model answer” treats a host-layer block as a model refusal. This plugin separates those two layers on your own install, for controlled evaluation and for seeing which default policy is too tight.
-
-| You get | What it does |
-|---|---|
-| **dsh-purge-safe dock** | A button beside the session title opens the right dock. Two pages: Clean and Drill |
-| **Clean** | Grouped patch status, Apply / Restore / Uninstall, prompt editor, multiple rule sets |
-| **Drill** | Built into the stable release. After authorization: assets and the local environment. The skill library and knowledge base ship with it. |
-| **Host policy** | Default copy, permission policy, and tool limits. Official capabilities stay. No second invented identity |
-| **On start** | The local build keeps automatic Apply off by default. Use Clean → Apply; startup reapplication can be configured when needed. |
-
-No hardcoded drive letters. It looks at `$DSH_HOME`, `.dsh` next to the dsh launcher, then `~/.dsh`. It does not patch the Harness source tree. **Apply** on the **Clean** page of **dsh-purge-safe** is what writes the changes. Identity comes from the encrypted prompt shipped in the plugin, the text the prompt box shows by default. The host prompt file is not read.
-
-It only touches the official `@deepseek-ai` packages and local config on the user's machine. It is not a public scanner and not an attack kit for third-party sites. The repo does not ship malware, unauthorized-exploit scripts, or payloads aimed at the public internet.
-
----
-
-## Resale of the original is prohibited. Forks must attribute.
-
-## Attribution required
-
-**Resale of the original build is prohibited.** Paid resale, re-skinning for store listings, and distribution as a commercial product are not permitted.
-
-**Forks must attribute** and name the source repository: [dsh-purge-safe / CallMeGuLab](./NOTICE). Same if you borrow the name, ideas, code, or prompts.
-
-Removing attribution, concealing the source, or reselling the original will be pursued by the maintainers.
-
-## License
-
-This repo is [Apache License 2.0](./LICENSE). Forks and redistributions must keep the copyright notice and [NOTICE](./NOTICE), and name [dsh-purge-safe / CallMeGuLab](./NOTICE). Resale of the original is prohibited.
-
----
-
-<a id="strict-legal--compliance-disclaimer"></a>
-
-<div>
-
-### ⚠️ <font color="red">Strict legal and compliance disclaimer</font>
-
-<font color="red">
-
-**Disclaimer:** This is a non-profit open-source project. It follows applicable laws and the rules of the platforms it uses, and is intended only for learning and research. Do not use it for any illegal or non-compliant purpose; the user bears any resulting consequences.
-
-**Zero-tolerance statement:** This project opposes and forbids any illegal activity. The maintainers do not support, encourage, or assist unauthorized network attacks, exploit use, data theft, unlawful intrusion into computer information systems, or generation of illegal or prohibited content. **Anyone who uses this project for crime is solely responsible under the law. The maintainers have no liability.**
-
-1. **This repository contains no illegal material.** The published code, docs, patches, and default prompt are **not** malware, backdoors, unauthorized pentest kits, ransomware, credential-stuffing scripts, or attack payloads aimed at the public internet or third-party systems. The project does not supply illegal content and does not incite, organize, or assist crime.
-2. **Local official Harness only.** Security-eval patches and prompt injection run only on the **official DeepSeek Harness already installed on the user's machine** (`@deepseek-ai` packages, local profile / `$DSH_HOME`). The target is the user's own official local software, **not** someone else's website, server, account, or information system.
-3. **Eval patches do not attack the public internet.** Apply, inject, revert, and uninstall stay in local files and local processes. They **do not scan, probe, intrude, or send attack traffic to any public host or unauthorized system**. Do not use this project as a jump host against the public internet. This fixed local archive has online updates disabled. That is **not** an attack on third-party systems and is **not** authorization to penetrate anything.
-4. **Lawful, controlled scope.** This project is an aid for red-team research and robustness evaluation on an **official Harness the user is entitled to administer**. **Do not run it against targets without the owner's lawful written authorization, public online systems, or production workloads.** Testing must stay on the **authorized local official Harness, offline local synthetic fixtures, authorized cybersecurity ranges, and compliant lab environments**.
-5. **Forbidden uses.** Users must not use this project, directly or indirectly, to violate the following (each must be followed; no excuse to evade):
-   - <font color="red"><strong>Criminal Law of the People's Republic of China</strong></font>
-   - <font color="red"><strong>Cybersecurity Law of the People's Republic of China</strong></font>
-   - <font color="red"><strong>Data Security Law of the People's Republic of China</strong></font>
-   - <font color="red"><strong>Personal Information Protection Law of the People's Republic of China</strong></font>
-   - and other applicable laws, regulations, and supervisory rules;
-   - Also forbidden:
-   - Unauthorized intrusion or attacks on public or private computer information systems; extortion, sabotage, credential stuffing, or spreading malicious payloads;
-   - Inducing, generating, or spreading any content the law forbids, including threats to national security, terrorism, violence, pornography, gambling, fraud, and privacy or intellectual-property infringement;
-   - Violating the model provider's terms of service and acceptable-use policy.
-6. **The user bears all responsibility.** The project is provided under Apache-2.0 as-is. The maintainers make no warranty of completeness, security, or fitness. **Users independently bear all civil, administrative, and criminal liability** for download, deploy, run, modify, distribute, and all resulting inputs and outputs. The maintainers and contributors bear no direct, indirect, or joint liability for abuse.
-7. **The license ends on breach.** Anyone who uses this project for illegal attacks, malicious activity, or other violations has their open-source license **automatically and irrevocably terminated** from the moment of the violation. They must stop using the project, permanently destroy all copies and derivatives, and accept legal sanctions.
-8. **No affiliation.** This is an independent open-source security-eval research project. It has no employment, commercial, authorization, or endorsement relationship with DeepSeek or its affiliates. "Official" here only means the eval target is the official DeepSeek Harness package on the user's machine. It does **not** mean DeepSeek developed, approved, or warrants this plugin.
-9. **Attribution is required.** If you borrow this project's name, ideas, code, or prompts, you must credit the maintainers and name this repository. Failure to attribute will be pursued. See [Attribution required](#attribution-required).
-
-</font>
-
-</div>
-
----
-
-## Supported hosts
-
-**DSH 0.2.2-rc.3** is the target for this edition, including Super Agent support. Official Web and desktop installations are managed separately.
-
-Unmatched patches remain pending or skipped; files are not rewritten blindly.
-
----
-
-## Install
-
-Extract this archive to a local directory named `dsh-purge-safe`. Install only into the host you actually use.
-
-```sh
-# Official dsh web; replace the path with your extracted directory
-dsh plugin --profile web add /absolute/path/to/dsh-purge-safe
-
-# Official desktop EXE
-dsh plugin --profile desktop add /absolute/path/to/dsh-purge-safe
+```powershell
+cd E:\newpurge\dsh-purge-unsafe-fork
+npm pack
+# 产物：dsh-purge-unsafe-0.1.0.tgz
+dsh plugin --profile web add .\dsh-purge-unsafe-0.1.0.tgz
 ```
 
-Fully quit and reopen that host. Click **dsh-purge-safe** beside the session title → **Clean** → **Apply**. A successful Apply restarts the host once. Verify the active home and patch status with `/purge status`.
+桌面端把 `--profile web` 换成 `--profile desktop`。也可以直接 add 目录：`dsh plugin --profile web add E:\newpurge\dsh-purge-unsafe-fork`。
 
-<a id="manual"></a>
+验证：`<DSH_HOME>/profiles/web/package.json` 的 `dependencies` 里出现 `dsh-purge-unsafe`，`dsh.profile.bundles` 里也有一行，且 `node_modules/dsh-purge-unsafe/package.json` 存在。
 
-### Manual install
+### 2. 符号链接调试（改代码立刻生效）
 
-1. Find the active `$DSH_HOME` containing `profiles/web` or `profiles/desktop`.
-2. Place the extracted plugin at `$DSH_HOME/plugins/dsh-purge-safe`.
-3. In that host profile's `package.json`, append `"dsh-purge-safe": "file:../../plugins/dsh-purge-safe"` to `dependencies` and `"dsh-purge-safe"` to `dsh.profile.bundles`. Keep existing entries.
-4. Run `pnpm install` inside that profile directory. Confirm `node_modules/dsh-purge-safe/package.json` exists.
-5. Fully quit and reopen the host, then use **Clean → Apply**.
-
-Uninstall through **Clean → Uninstall** or `/purge uninstall`. This archive uses local installation; it does not include a remote repository install address.
-
----
-
-## Layout
-
-`bin/` is the CLI, `lib/` is patches and the drill console, `presets/redteam/` is the red-team preset, `skills/redteam/` holds the bundled skills, and `client.js` is the dock.
-
-Runtime files live under `$DSH_HOME`: `prompt-inject.md`, `rules/`, `skills/`, `redteam/`. If `DSH_HOME` is unset, the launcher-adjacent `.dsh` wins over `~/.dsh`. Web and the desktop app each use their own home.
-
----
-
-## Usage
-
-```sh
-dsh-purge-safe --status
-dsh-purge-safe --apply
-dsh-purge-safe --revert
-dsh-purge-safe --uninstall
-dsh-purge-safe --edit
-
-/purge status | apply | revert | uninstall | edit | help
-/rules list | use <id> | create <id> | delete <id> | reset | help
-/rewind
-
-# If another plugin already owns /rewind (or /purge, /rules, /skills), that
-# name is skipped or remounted as /purge-rewind. Other commands, tools, and
-# /dsh-purge-safe/* routes keep working.
-
-purge_status   purge_apply   purge_revert
+```powershell
+$profile = Join-Path $env:DSH_HOME 'profiles\web'      # 桌面端改 profiles\desktop
+New-Item -ItemType Directory -Force -Path "$profile\node_modules" | Out-Null
+New-Item -ItemType SymbolicLink -Path "$profile\node_modules\dsh-purge-unsafe" `
+  -Target 'E:\newpurge\dsh-purge-unsafe-fork'
 ```
 
-After a successful Apply, the host restarts so patched packages load; you can also click **Restart** manually. This is a fixed local build: online updates, channel switching, and rollback downloads are disabled.
+再在该 profile 的 `package.json` 里补两处：`dependencies` 加 `"dsh-purge-unsafe": "*"`，`dsh.profile.bundles` 加 `"dsh-purge-unsafe"`。改完 JS 重启宿主即可，不用重新打包。
 
-The composer **Undo once** and **Undo last round** stay in the current conversation and do not open a branch. The sent line goes back into the input, and that cut's already-sent messages and completed tasks leave the current conversation; edit and **send again**. Rewind bounds follow the **current turn**, not the first user message. `/rewind` does the same.
+### 3. 直接放 `local-plugins`
 
-If the **same task works in standard but fails in minimal or PTC**, preset `run_code`, sandbox, or plan intercept text is often still uncleared, or built-in minimal is missing `agent-instructions`. Upgrade to the latest version, then **quit the host fully → Apply in Clean → restart → start a new chat**. Switching preset alone does not reload patches in the running process.
-
-### Response speed
-
-DSH runs Bash calls in a tool batch one at a time. Older dsh-purge-safe releases raised the default foreground wait from 60 seconds to 10 minutes, so one slow command could hold up later calls for that long. Patch #21 now restores marked plugin values to the official 60-second default. Unmarked timeouts and other custom values are preserved; an unmarked 10-minute value cannot reliably be distinguished from a user setting.
-
-For a shorter wait in `dsh web` on macOS/Linux, add this entry to `$DSH_HOME/profiles/web/cordis.patch.yml` (normally `~/.dsh/profiles/web/cordis.patch.yml`). Edit an existing entry with the same id instead of adding a duplicate. This profile layer is applied after the bundled configuration, so future plugin applies keep the override.
-
-```yaml
-- id: bash-sandbox
-  config:
-    timeoutMs: 10000
+```powershell
+$dst = Join-Path $env:DSH_HOME 'local-plugins\dsh-purge-unsafe'
+New-Item -ItemType Directory -Force -Path (Split-Path $dst) | Out-Null
+Copy-Item -Recurse -Force 'E:\newpurge\dsh-purge-unsafe-fork' $dst
 ```
 
-With the standard jobs service and `promoteOnTimeout: true`, an unfinished command returns a background job id after 10 seconds and keeps running. Read it with `job_output` or stop it with `job_kill`. This changes the foreground wait, not the command's speed. Without that service or with promotion disabled, the timeout kills the command. A per-call `timeoutMs` overrides this default; `run_in_background: true` returns a job id immediately.
+profile 的 `package.json`：
 
-For routine tasks, you can also opt into Low reasoning for new sessions:
-
-```yaml
-- id: agent-default-model
-  config:
-    provider: deepseek-official
-    model: deepseek-flash
-    reasoningEffort: low
+```json
+"dependencies": { "dsh-purge-unsafe": "file:../../local-plugins/dsh-purge-unsafe" },
+"dsh": { "profile": { "bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "dsh-purge-unsafe"] } }
 ```
 
-Restart `dsh web` to load the profile. The model and reasoning defaults apply to newly created sessions; select Low in the composer for an existing session. The plugin does not change these model preferences automatically. Keep High when the task needs deeper reasoning, and narrow file searches rather than recursively scanning every application directory.
-
-### Local lab
-
-Penetration, attack, or scanning against mainland China, Hong Kong and Macau, banks and financial sites, government and military sites is prohibited.
-
----
-
-## Local checks
-
-```sh
-node --check lib/index.js
-node --check lib/core.js
-node --check lib/surface.js
-node --check lib/web.js
-node --check lib/desktop.js
-node --check lib/host.js
-node --check lib/rewind.js
-node --check lib/skills.js
-node --check client.js
+```powershell
+cd (Join-Path $env:DSH_HOME 'profiles\web')
+pnpm install
 ```
 
----
+## 面板入口
 
-## How it works
+两个入口等价：
 
-Apply, on start or when you click Apply:
+- **侧边栏图标 `PU`**（slot `sidebar.panellist`，order 6）→ 主视图内嵌面板，key `purge-unsafe`
+- **直接开页面**：`http://127.0.0.1:<端口>/dsh-purge-unsafe`。`dsh web` 默认 `3080`；桌面端端口看环境变量 `DSH_WEB_URL`（形如 `http://127.0.0.1:56838`）
 
-```mermaid
-flowchart TD
-  A["Start or click Apply"] --> B{"Patch already in place?"}
-  B -->|yes| C["Skip"]
-  B -->|no| D["Back up the original as .dshpurge.bak"]
-  D --> E["Replace the matched files"]
-  E --> F["Override the shim"]
-  F --> G["Inject the encrypted prompt shipped in the plugin, the text the prompt box shows by default"]
+三个页签，默认打开「资产」：
+
+| 页签 | 内容 | 动作 |
+|---|---|---|
+| 资产 | 资产表格、数量、剪贴板/文本框 | 批量导入、从文件导入、清空 |
+| 规则 | 当前规则全文、模型预设 | 保存、恢复默认 |
+| 状态 | 版本、宿主版本、段是否注册、规则字数、资产数、数据目录、降级 warning | 只读 |
+
+## HTTP 接口
+
+全部挂在 `/dsh-purge-unsafe` 前缀下，只监听本机。
+
+| 方法 | 路径 | 入参 | 回显 |
+|---|---|---|---|
+| GET | `/dsh-purge-unsafe` | — | 面板 HTML（`text/html`，含三个页签） |
+| GET | `/dsh-purge-unsafe/assets` | — | `{ ok, assets: [{ value, kind, addedAt }] }` |
+| POST | `/dsh-purge-unsafe/assets` | `{ "text": "example.com\n10.0.0.0/24" }` | `{ ok, added, duplicate, total }` |
+| POST | `/dsh-purge-unsafe/assets/clear` | `{}` | `{ ok, total: 0 }` |
+| GET | `/dsh-purge-unsafe/rules` | — | `{ ok, rules, custom, model }` |
+| POST | `/dsh-purge-unsafe/rules` | `{ "text": "规则全文" }`（也接受 `rules` 字段） | `{ ok, chars }` |
+| POST | `/dsh-purge-unsafe/rules/reset` | `{}` | `{ ok, chars, defaultChars }` |
+| GET | `/dsh-purge-unsafe/status` | — | `{ ok, version, promptRegistered, promptChars, assets, dataDir, host, strategy, warnings }` |
+
+另有两条给模型预设用：`GET /dsh-purge-unsafe/models` 回 `{ ok, model, presets, current }`，`POST /dsh-purge-unsafe/models` 收 `{ "model": "qwen-max" }`。
+
+未匹配路径返回 `404 { ok:false, error }`；处理函数内部出错返回 `500 { ok:false, error }`。
+
+```powershell
+# 冒烟：读状态
+curl.exe -s http://127.0.0.1:3080/dsh-purge-unsafe/status
+# 判据：HTTP 200，promptRegistered=true，assets 与面板上一致
+
+# 批量导入
+curl.exe -s -X POST http://127.0.0.1:3080/dsh-purge-unsafe/assets -H 'content-type: application/json' -d '{"text":"example.com,10.0.0.5:8080\n10.0.0.0/24"}'
+# 判据：added=3；同一批再发一次得到 added=0、duplicate=3
 ```
 
-Override on each session:
+## 数据位置
 
-```mermaid
-flowchart TD
-  A["Restart or new session"] --> B["Inject the plugin's encrypted default. No save click, and no host prompt file"]
+全部落在 `<DSH_HOME>/dsh-purge-unsafe/`，`<DSH_HOME>` 未设时回落 `~/.dsh`（本机为 `C:\Users\Admin\.dsh`）。
+
+| 文件 | 内容 | 写入时机 |
+|---|---|---|
+| `assets.json` | 资产数组 `[{ value, kind, addedAt }]`，`kind` ∈ `host` / `host:port` / `ip` / `cidr` | 批量导入、清空 |
+| `state.json` | `{ rules, model, updatedAt }`；`rules` 为空表示用默认规则，`model` 为空表示 `generic` | 保存规则、恢复默认、切模型 |
+
+两份文件都走「临时文件 + `rename`」原子写，不会写出半截 JSON。手动删除目录等于恢复初始状态。
+
+## 自测
+
+```powershell
+cd E:\newpurge\dsh-purge-unsafe-fork
+node test/smoke.mjs          # 假宿主跑 apply()，再打全部 HTTP 路由
+node test/compat-matrix.mjs  # rc1–rc5 能力矩阵与降级路径
+node test/panel.test.mjs     # 面板页结构、页签、体积、转义
+node test/rules.test.mjs     # 默认规则文本与模型预设匹配
 ```
 
-Prompt injection and ruleset decision at every turn. The three inputs on the left are what you control in the dsh-purge-safe panel; the dotted edges show which decision each one drives:
+判据：
 
-```mermaid
-flowchart TD
-  L["Rule library: activate a set → writes prompt-inject.md"]
-  W["Local rules: check AGENTS.md / CLAUDE.md in the current dir"]
-  P["Workspace policy: strict / fallback / always"]
+| 命令 | 成功回显 | 退出码 |
+|---|---|---|
+| `node test/smoke.mjs` | 末行 `全部通过` | 0 |
+| `node test/compat-matrix.mjs` | 末行 `compat-matrix: all green`，统计行 `断言合计: 151，通过 151，失败 0` | 0 |
+| `node test/panel.test.mjs` | `panel.test.mjs ok — … 页签 3 个，script 1 个，style 1 个` | 0 |
+| `node test/rules.test.mjs` | 末行 `rules.test.mjs ok` | 0 |
 
-  A["Turn start"] --> B{"prompt-inject.md non-empty?"}
-  B -->|yes| C["Inject = prompt-inject.md (A)"]
-  B -->|no| D{"Any checked local md in the current dir, non-empty?"}
-  D -->|yes| E["Inject = selected workspace md (B)"]
-  D -->|no| F["Inject = plugin encrypted slot default (D)"]
-  C --> G{"Workspace baseline policy (C)"}
-  E --> G
-  F --> G
-  G -->|strict| H["Drop DSH workspace baseline section"]
-  G -->|fallback default| I{"User inject present above? (A or B)"}
-  G -->|always| J["Keep DSH workspace baseline section"]
-  I -->|yes| H
-  I -->|no| J
-  H --> K["Final system prompt"]
-  J --> K
+一次跑完：`npm test`（等价于前两条）。
 
-  L -.-> B
-  W -.-> D
-  P -.-> G
+## Fork 与推送流程
+
+本机现状：`gh 2.92.0` 已安装，但 token 已失效——`gh auth status` 会报 `The token in default is invalid.`，所以**推送前必须先重新登录**。当前 `git remote -v` 的 `origin` 还指向上游 `CallMeGuLab/dsh-purge-safe`，推送前先把远端角色理顺。
+
+```powershell
+cd E:\newpurge\dsh-purge-unsafe-fork
+gh auth login -h github.com
+gh repo create dsh-purge-unsafe --public --source=. --remote=origin --push
+# 若已存在远端：git remote add origin git@github.com:<你的账号>/dsh-purge-unsafe.git; git push -u origin main
+# 想显示为 GitHub 上的 fork：先在网页点 Fork，再 git remote add upstream https://github.com/CallMeGuLab/dsh-purge-safe.git
 ```
 
----
+`origin` 已被上游占用时，先改名再建新远端：
 
-## Restore
+```powershell
+git remote rename origin upstream
+gh repo create dsh-purge-unsafe --public --source=. --remote=origin --push
+git remote -v   # origin → 你的账号/dsh-purge-unsafe，upstream → CallMeGuLab/dsh-purge-safe
+```
 
-- Each target is copied to `<file>.dshpurge.bak` before the first apply.
-- **Restore** or `/purge revert` copies backups back and deletes them. With no backup, shim lines written by this plugin are stripped.
-- `prompt-inject.md` is a user file and is kept.
-- **Uninstall** restores first if patches were applied, then deletes the inject file, rule library, and the plugin itself.
-- Apply is idempotent.
+发布前核对三件事：
 
----
+```powershell
+git log --oneline | Measure-Object -Line   # 上游 4 个提交 + 本次改动，历史不断
+git log --oneline cc881fb -1               # 基点仍在
+notepad NOTICE                             # 上游归属原样保留
+```
 
-## Path detection
+- **保留上游历史**：不从零 `git init`、不 squash。上游的 `d27941b` / `c82ace3` / `d96c5f2` / `cc881fb` 四个提交都要在 `git log` 里看得到，这样 GitHub 上能直接对比 diff，也方便以后 `git merge upstream/main`。
+- **保留 NOTICE 归属**：`NOTICE` 与 `LICENSE` 一个字不动。Apache-2.0 的再分发要求是保留版权声明与 NOTICE，fork 改名不豁免这一条。
+- **包名与仓库名一致**：`package.json` 的 `name` 是 `dsh-purge-unsafe`，GitHub 仓库同名，`dsh plugin add` 装的也是这个名字，三处不要错位。
 
-The host surface is detected first: `web` / `desktop` (`gui` / `tui` are reserved and still fall back to web).
+## 目录结构
 
-**Web:**
+```
+lib/unsafe/      入口 index.js、兼容层 compat.js、面板 panel.js、规则 rules.js
+test/            smoke / compat-matrix / panel.test / rules.test
+client.js        侧边栏图标 PU + 主视图 iframe，仅此二事
+bin/             CLI
+presets/unsafe-*.md   四套模型预设
+docs/            unsafe.md（设计说明）、COMPAT.md（兼容矩阵）
+```
 
-1. `DSH_HOME` / `DSH_BASE`
-2. `.dsh` next to the dsh launcher (portable install, any drive)
-3. `npm prefix -g` / `npm root -g`
-4. Nested `@deepseek-ai/dsh/node_modules/@deepseek-ai`
-5. `~/.dsh`
+## 许可与归属
 
-**Official desktop EXE:** the running official Harness install (`resources/app` or the unpacked package). The drive letter is not hard-coded. A successful Apply restarts once.
-
-Community Desktop is not maintained.
-
-Official npm-global is not patched. Sealed `host-commands` / `runtime-commands` are scrubbed, never injected.
-
-If nothing is found, set `DSH_BASE` / `DSH_DESKTOP_INSTALL`. No files are changed.
-
----
-
-## Releases
-
-See [release-notes.md](./release-notes.md) for the current release notes. Update by replacing the local package with a new archive. Copyright and attribution are recorded in [NOTICE](./NOTICE).
-
-## Notes
-
-- Scope is rendered copy, defaults, and runtime logic inside local `@deepseek-ai/*` packages, plus override files and rule sets under the harness home.
-- After an upgrade, unmatched originals show as skipped. Apply still completes, and those files are left unchanged.
-- Third-party plugin *source repos* outside `@deepseek-ai` are left alone (CMD silence may **best-effort** patch installed doctor / market / liangshen / mnemon at runtime).
-- Install from the extracted local directory as described in [Install](#install). Web and desktop use separate profiles.
-
----
-
-Thanks to the [LINUX DO](https://linux.do) community
-
+Apache-2.0，见 [LICENSE](./LICENSE)。`NOTICE` 里的上游声明必须随再分发保留，fork 需要注明来源为 [dsh-purge-safe / CallMeGuLab](https://github.com/CallMeGuLab/dsh-purge-safe)。
