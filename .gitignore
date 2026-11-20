@@ -6,6 +6,12 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 
+# fork 本地产物：npm pack 出的包、调试符号链接、宿主留下的状态文件与日志
+*.tgz
+node_modules/
+.dsh-*
+*.log
+
 # 只给本机 Cursor 技能看，不进仓库
 docs/agents/
 .cursor/
